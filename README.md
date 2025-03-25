@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # 多人局域网德州扑克游戏
 
 一个基于React和Socket.IO的多人局域网德州扑克游戏，支持2-9名玩家同时在线游戏。
@@ -110,3 +111,7 @@ npm start
 - 设置了基本项目结构
 - 初始化了README和文档框架
 - 设计了基础架构
+=======
+# multiplayer-poker-game
+A multiplayer Texas Hold'em poker game for LAN with React
+>>>>>>> cf36af32fa1865ed344cc499051c5af3834bdd37
