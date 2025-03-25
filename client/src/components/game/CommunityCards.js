@@ -19,26 +19,34 @@ const CardSlot = styled(animated.div)`
   border: 2px dashed rgba(255, 255, 255, 0.3);
 `;
 
-const CommunityCards = ({ cards = [] }) => {
-  // 创建动画效果
-  const cardAnimations = Array(5).fill().map((_, index) => {
-    const hasCard = index < cards.length;
-    return useSpring({
-      from: { opacity: 0, transform: 'translateY(-20px)' },
-      to: {
-        opacity: hasCard ? 1 : 0.3, 
-        transform: hasCard ? 'translateY(0)' : 'translateY(0)'
-      },
-      delay: hasCard ? index * 200 : 0
-    });
+// 单独的CardSlotWithAnimation组件，每个卡槽使用一个独立的Hook
+const CardSlotWithAnimation = ({ index, cards }) => {
+  const hasCard = index < cards.length;
+  const props = useSpring({
+    from: { opacity: 0, transform: 'translateY(-20px)' },
+    to: {
+      opacity: hasCard ? 1 : 0.3, 
+      transform: hasCard ? 'translateY(0)' : 'translateY(0)'
+    },
+    delay: hasCard ? index * 200 : 0
   });
 
   return (
+    <CardSlot style={props}>
+      {hasCard ? <Card card={cards[index]} /> : null}
+    </CardSlot>
+  );
+};
+
+const CommunityCards = ({ cards = [] }) => {
+  return (
     <Container>
       {[0, 1, 2, 3, 4].map((index) => (
-        <CardSlot key={index} style={cardAnimations[index]}>
-          {index < cards.length ? <Card card={cards[index]} /> : null}
-        </CardSlot>
+        <CardSlotWithAnimation 
+          key={index} 
+          index={index} 
+          cards={cards} 
+        />
       ))}
     </Container>
   );

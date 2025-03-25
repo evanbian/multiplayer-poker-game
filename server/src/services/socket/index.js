@@ -73,6 +73,9 @@ const initSocketServer = (socketIo) => {
 };
 
 // 处理断开连接
+// server/src/services/socket/index.js - 修复handleDisconnect函数
+
+// 修复的handleDisconnect函数部分
 const handleDisconnect = (socket) => {
   const userData = connectedUsers.get(socket.id);
   if (!userData) return;
@@ -81,24 +84,37 @@ const handleDisconnect = (socket) => {
   
   // 如果用户在房间中，处理离开房间逻辑
   if (userData.roomId) {
-    const room = roomService.getRoom(userData.roomId);
-    if (room) {
-      roomService.leaveRoom(userData.id, userData.roomId);
-      socket.leave(userData.roomId);
-      
-      // 通知房间其他玩家
-      socket.to(userData.roomId).emit('player_left', { playerId: userData.id });
-      socket.to(userData.roomId).emit('room_update', {
-        room: roomService.getRoomInfo(userData.roomId),
-        players: roomService.getPlayersInRoom(userData.roomId)
-      });
+    try {
+      // 先检查房间是否仍然存在
+      if (roomService.roomExists(userData.roomId)) {
+        // 获取房间信息
+        const roomInfo = roomService.getRoomInfo(userData.roomId);
+        
+        // 用户离开房间
+        roomService.leaveRoom(userData.id, userData.roomId);
+        socket.leave(userData.roomId);
+        
+        // 通知房间其他玩家
+        socket.to(userData.roomId).emit('player_left', { playerId: userData.id });
+        
+        // 只有当房间仍然存在时才发送房间更新
+        if (roomService.roomExists(userData.roomId)) {
+          socket.to(userData.roomId).emit('room_update', {
+            room: roomService.getRoomInfo(userData.roomId),
+            players: roomService.getPlayersInRoom(userData.roomId)
+          });
+        }
+      } else {
+        logger.info(`Room ${userData.roomId} no longer exists when user ${userData.id} disconnected`);
+      }
+    } catch (error) {
+      logger.error(`Error handling disconnect for user ${userData.id}: ${error.message}`);
     }
   }
   
   // 移除用户记录
   connectedUsers.delete(socket.id);
 };
-
 // 处理创建房间
 const handleCreateRoom = (socket, data) => {
   try {

@@ -9,16 +9,6 @@ import Pot from './Pot';
 import DealerButton from './DealerButton';
 import { sitDown } from '../../services/socket/socketService';
 import { setNotification } from '../../store/slices/uiSlice';
-import React, { useState, useEffect } from 'react';
-import { useSelector, useDispatch } from 'react-redux';
-import styled from 'styled-components';
-import PlayerSeat from './PlayerSeat';
-import CommunityCards from './CommunityCards';
-import ActionControls from './ActionControls';
-import Pot from './Pot';
-import DealerButton from './DealerButton';
-import { sitDown } from '../../services/socket/socketService';
-import { setNotification } from '../../store/slices/uiSlice';
 
 const TableContainer = styled.div`
   position: relative;
@@ -194,9 +184,21 @@ const GameTable = () => {
             style={{
               position: 'absolute',
               bottom: '10px',
-              zIndex: 100
+              zIndex: 100,
+              padding: '8px 15px',
+              backgroundColor: '#3498db',
+              color: 'white',
+              border: 'none',
+              borderRadius: '4px',
+              cursor: 'pointer'
             }}
           >
             {showEmptySeats ? '隐藏空座位' : '显示空座位'}
           </button>
         )}
+      </TableFelt>
+    </TableContainer>
+  );
+};
+
+export default GameTable;

@@ -88,8 +88,15 @@ multiplayer-poker-game/
 ### 安装步骤
 ```bash
 # 克隆仓库
-git clone https://github.com/yourusername/multiplayer-poker-game.git
+git clone https://github.com/evanbian/multiplayer-poker-game.git
 cd multiplayer-poker-game
+
+# 一键安装所有依赖
+npm run install-all
+
+# 或者分别安装
+# 安装根目录依赖
+npm install
 
 # 安装后端依赖
 cd server
@@ -102,14 +109,22 @@ npm install
 
 ### 运行开发环境
 ```bash
-# 终端1：启动后端服务
-cd server
+# 同时启动前后端（在根目录）
 npm run dev
 
-# 终端2：启动前端应用
-cd client
+# 或分别启动
+# 终端1：启动后端服务（在server目录）
+npm run dev
+
+# 终端2：启动前端应用（在client目录）
 npm start
 ```
+
+访问 http://localhost:3000 即可打开游戏。
+
+## 游戏规则
+
+本游戏采用标准德州扑克规则，详细规则请参考 [docs/game-rules.md](docs/game-rules.md)。
 
 ## 如何贡献
 
@@ -118,7 +133,6 @@ npm start
 3. 提交你的修改 (`git commit -m 'Add some amazing feature'`)
 4. 推送到分支 (`git push origin feature/amazing-feature`)
 5. 创建一个Pull Request
-
 ## 开发会话记录
 
 为了帮助在不同会话之间保持上下文，我们将在此记录开发过程中的关键决策和进展。
@@ -141,6 +155,12 @@ npm start
 - 创建了主要组件结构
 - 实现了基本UI布局和样式
 
+### 会话 #4 (修复与优化): 2025-03-25
+- 修复了GameTable.js中的代码重复问题
+- 创建了项目配置文件和环境变量设置
+- 编写了详细的项目启动指南
+- 更新了开发文档
+
 ## 下一步计划
 
 1. 优化玩家动作与状态转换动画
@@ -153,3 +173,22 @@ npm start
 ## 许可证
 
 本项目采用MIT许可证 - 详见 [LICENSE](LICENSE) 文件。
+
+## 常见问题
+
+### Q: 如何在局域网中与朋友一起玩？
+A: 启动服务器后，确保服务器配置允许外部访问（在server/.env中设置），然后让局域网中的朋友通过您的IP地址和端口访问。
+
+### Q: 游戏中可以容纳多少玩家？
+A: 本游戏支持2-9名玩家同时参与。
+
+### Q: 如何增加初始筹码数量？
+A: 可以在server/src/config/index.js文件中修改默认筹码数量。
+
+## 联系方式
+
+如有问题或建议，请通过GitHub Issues提交。
+
+---
+
+祝您游戏愉快！
