@@ -1,4 +1,4 @@
-// src/services/socket/socketService.js
+// client/src/services/socket/socketService.js
 import { io } from 'socket.io-client';
 import { store } from '../../store';
 import {
@@ -17,6 +17,7 @@ import {
 } from '../../store/slices/gameSlice';
 import { addMessage } from '../../store/slices/chatSlice';
 import { setError, setNotification } from '../../store/slices/uiSlice';
+import { setPlayerInfo } from '../../store/slices/authSlice';
 
 let socket = null;
 
@@ -39,6 +40,12 @@ const setupSocketListeners = () => {
   socket.on('connect_success', (data) => {
     console.log('连接到服务器，玩家ID:', data.playerId);
     localStorage.setItem('playerId', data.playerId);
+    
+    // 更新玩家ID
+    store.dispatch(setPlayerInfo({
+      playerId: data.playerId,
+      playerName: localStorage.getItem('playerName') || ''
+    }));
   });
 
   // 房间列表更新
@@ -48,8 +55,10 @@ const setupSocketListeners = () => {
 
   // 成功加入房间
   socket.on('room_joined', (data) => {
+    console.log('成功加入房间:', data);
     store.dispatch(setRoomInfo(data.room));
     store.dispatch(updatePlayers(data.players));
+    store.dispatch(updateSeats(data.seats || [])); // 确保seats数据存在
     store.dispatch(setNotification({
       message: `成功加入房间: ${data.room.name}`,
       type: 'success'
@@ -58,8 +67,12 @@ const setupSocketListeners = () => {
 
   // 房间信息更新
   socket.on('room_update', (data) => {
+    console.log('房间信息更新:', data);
     store.dispatch(setRoomInfo(data.room));
     store.dispatch(updatePlayers(data.players));
+    if (data.seats) {
+      store.dispatch(updateSeats(data.seats));
+    }
   });
 
   // 玩家加入
@@ -82,6 +95,7 @@ const setupSocketListeners = () => {
 
   // 座位状态更新
   socket.on('seat_update', (data) => {
+    console.log('座位状态更新:', data);
     store.dispatch(updateSeats(data.seats));
   });
 
@@ -195,6 +209,7 @@ const setupSocketListeners = () => {
 
   // 错误处理
   socket.on('error', (data) => {
+    console.error('Socket错误:', data);
     store.dispatch(setError({
       code: data.code,
       message: data.message
@@ -258,6 +273,10 @@ export const sendAction = (action, amount = 0) => {
 export const createRoom = (roomName, playerName, maxPlayers = 9, minBet = 10) => {
   if (!socket) return false;
   
+  // 保存玩家名称到本地存储
+  localStorage.setItem('playerName', playerName);
+  
+  console.log('创建房间:', { roomName, playerName, maxPlayers, minBet });
   socket.emit('create_room', { roomName, playerName, maxPlayers, minBet });
   return true;
 };
@@ -266,6 +285,10 @@ export const createRoom = (roomName, playerName, maxPlayers = 9, minBet = 10) =>
 export const joinRoom = (roomId, playerName) => {
   if (!socket) return false;
   
+  // 保存玩家名称到本地存储
+  localStorage.setItem('playerName', playerName);
+  
+  console.log('加入房间:', { roomId, playerName });
   socket.emit('join_room', { roomId, playerName });
   return true;
 };
@@ -274,6 +297,7 @@ export const joinRoom = (roomId, playerName) => {
 export const leaveRoom = () => {
   if (!socket) return false;
   
+  console.log('离开房间');
   socket.emit('leave_room');
   return true;
 };
@@ -282,6 +306,7 @@ export const leaveRoom = () => {
 export const sitDown = (seatPosition) => {
   if (!socket) return false;
   
+  console.log('入座位置:', seatPosition);
   socket.emit('sit_down', { seatPosition });
   return true;
 };
@@ -290,6 +315,7 @@ export const sitDown = (seatPosition) => {
 export const standUp = () => {
   if (!socket) return false;
   
+  console.log('起立');
   socket.emit('stand_up');
   return true;
 };
@@ -298,6 +324,7 @@ export const standUp = () => {
 export const toggleReady = (ready) => {
   if (!socket) return false;
   
+  console.log('准备状态:', ready);
   socket.emit('player_ready', { ready });
   return true;
 };

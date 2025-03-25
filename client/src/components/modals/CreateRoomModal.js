@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import styled from 'styled-components';
 import { createRoom } from '../../services/socket/socketService';
-import { closeModal, setActiveModal } from '../../store/slices/uiSlice';
+import { closeModal, setActiveModal, setLoading } from '../../store/slices/uiSlice';
 
 const ModalOverlay = styled.div`
   position: fixed;
@@ -111,6 +111,12 @@ const Button = styled.button`
   &:hover {
     transform: translateY(-2px);
   }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
+  }
 `;
 
 const CancelButton = styled(Button)`
@@ -137,9 +143,17 @@ const ErrorMessage = styled.div`
   margin-top: 5px;
 `;
 
+const LoadingIndicator = styled.div`
+  color: #3498db;
+  font-size: 14px;
+  text-align: center;
+  margin-top: 10px;
+`;
+
 const CreateRoomModal = () => {
   const dispatch = useDispatch();
   const playerName = useSelector((state) => state.auth.playerName);
+  const isLoading = useSelector((state) => state.ui.loading);
   
   const [formData, setFormData] = useState({
     roomName: '',
@@ -189,9 +203,12 @@ const CreateRoomModal = () => {
   const handleSubmit = (e) => {
     e.preventDefault();
     
-    if (!validateForm()) {
+    if (!validateForm() || isLoading) {
       return;
     }
+    
+    // 设置加载状态
+    dispatch(setLoading(true));
     
     // 创建房间
     createRoom(
@@ -201,12 +218,16 @@ const CreateRoomModal = () => {
       parseInt(formData.minBet, 10)
     );
     
-    // 关闭模态框
-    dispatch(closeModal());
+    // 延迟关闭模态框以等待服务器响应
+    setTimeout(() => {
+      dispatch(closeModal());
+      dispatch(setLoading(false));
+    }, 1000);
   };
   
   // 处理关闭模态框
   const handleClose = () => {
+    if (isLoading) return; // 加载中不允许关闭
     dispatch(closeModal());
   };
 
@@ -215,7 +236,7 @@ const CreateRoomModal = () => {
       <ModalContainer>
         <ModalHeader>
           <ModalTitle>创建新房间</ModalTitle>
-          <CloseButton onClick={handleClose}>&times;</CloseButton>
+          <CloseButton onClick={handleClose} disabled={isLoading}>&times;</CloseButton>
         </ModalHeader>
         
         <Form onSubmit={handleSubmit}>
@@ -228,6 +249,7 @@ const CreateRoomModal = () => {
               value={formData.roomName}
               onChange={handleInputChange}
               placeholder="输入房间名称"
+              disabled={isLoading}
             />
             {errors.roomName && <ErrorMessage>{errors.roomName}</ErrorMessage>}
           </FormGroup>
@@ -241,6 +263,7 @@ const CreateRoomModal = () => {
               value={formData.playerName}
               onChange={handleInputChange}
               placeholder="输入您的昵称"
+              disabled={isLoading}
             />
             {errors.playerName && <ErrorMessage>{errors.playerName}</ErrorMessage>}
           </FormGroup>
@@ -252,6 +275,7 @@ const CreateRoomModal = () => {
               name="maxPlayers"
               value={formData.maxPlayers}
               onChange={handleInputChange}
+              disabled={isLoading}
             >
               {[2, 3, 4, 5, 6, 7, 8, 9].map((num) => (
                 <option key={num} value={num}>
@@ -271,15 +295,18 @@ const CreateRoomModal = () => {
               value={formData.minBet}
               onChange={handleInputChange}
               min="1"
+              disabled={isLoading}
             />
             {errors.minBet && <ErrorMessage>{errors.minBet}</ErrorMessage>}
           </FormGroup>
           
+          {isLoading && <LoadingIndicator>创建房间中，请稍候...</LoadingIndicator>}
+          
           <ButtonGroup>
-            <CancelButton type="button" onClick={handleClose}>
+            <CancelButton type="button" onClick={handleClose} disabled={isLoading}>
               取消
             </CancelButton>
-            <CreateButton type="submit">
+            <CreateButton type="submit" disabled={isLoading}>
               创建房间
             </CreateButton>
           </ButtonGroup>

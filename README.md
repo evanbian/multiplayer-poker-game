@@ -12,6 +12,15 @@
 - 为Mac M1优化的性能
 - 美观直观的游戏界面
 
+## 最新更新
+
+### 2025-03-26 更新
+- ✅ 修复了主机创建房间后卡在加载状态的问题
+- ✅ 解决了客户端依赖冲突问题
+- ✅ 修复了Action按钮无法点击问题
+- ✅ 修复了房间加入偶尔失败的问题
+- ✅ 添加了便捷的安装脚本与启动命令
+
 ## 项目结构
 
 ```
@@ -34,6 +43,7 @@ multiplayer-poker-game/
 │       ├── models/        # 数据模型
 │       ├── services/      # 业务逻辑服务
 │       └── utils/         # 工具函数
+├── setup.sh               # 安装脚本
 └── README.md              # 项目说明文档
 ```
 
@@ -85,7 +95,14 @@ multiplayer-poker-game/
 - Node.js (v14+)
 - npm 或 yarn
 
-### 安装步骤
+### 安装方法1（推荐）:
+```bash
+# 使用安装脚本
+chmod +x setup.sh  # 给脚本添加执行权限
+./setup.sh
+```
+
+### 安装方法2（手动安装）:
 ```bash
 # 克隆仓库
 git clone https://github.com/evanbian/multiplayer-poker-game.git
@@ -98,12 +115,12 @@ npm run install-all
 # 安装根目录依赖
 npm install
 
-# 安装后端依赖
-cd server
-npm install
+# 安装客户端依赖（添加--legacy-peer-deps解决依赖冲突）
+cd client
+npm install --legacy-peer-deps
 
-# 安装前端依赖
-cd ../client
+# 安装后端依赖
+cd ../server
 npm install
 ```
 
@@ -126,6 +143,30 @@ npm start
 
 本游戏采用标准德州扑克规则，详细规则请参考 [docs/game-rules.md](docs/game-rules.md)。
 
+## 疑难解答
+
+如果您在安装或运行过程中遇到问题，请尝试以下解决方案：
+
+1. **安装依赖失败**:
+   ```bash
+   # 清除npm缓存
+   npm cache clean --force
+   
+   # 使用--legacy-peer-deps参数安装
+   cd client
+   npm install --legacy-peer-deps
+   ```
+
+2. **启动失败**:
+   - 确保端口3000和3001未被占用
+   - 检查server目录下是否有.env文件
+   - 检查日志目录是否存在（server/logs）
+
+3. **连接问题**:
+   - 确保服务器正在运行
+   - 检查控制台是否有Socket.IO连接错误
+   - 尝试重新启动服务器和客户端
+
 ## 如何贡献
 
 1. Fork本仓库
@@ -133,6 +174,7 @@ npm start
 3. 提交你的修改 (`git commit -m 'Add some amazing feature'`)
 4. 推送到分支 (`git push origin feature/amazing-feature`)
 5. 创建一个Pull Request
+
 ## 开发会话记录
 
 为了帮助在不同会话之间保持上下文，我们将在此记录开发过程中的关键决策和进展。
@@ -160,6 +202,13 @@ npm start
 - 创建了项目配置文件和环境变量设置
 - 编写了详细的项目启动指南
 - 更新了开发文档
+
+### 会话 #5 (Bug修复): 2025-03-26
+- 修复了主机创建房间后卡在加载状态的问题
+- 解决了客户端依赖冲突问题
+- 修复了Action按钮无法点击问题
+- 修复了房间加入偶尔失败的问题
+- 添加了便捷的安装脚本与启动命令
 
 ## 下一步计划
 

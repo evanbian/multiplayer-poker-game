@@ -15,6 +15,7 @@ const ActionPanel = styled.div`
   align-items: center;
   box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
   width: 280px;
+  pointer-events: auto; /* 确保事件可以传递到按钮 */
 `;
 
 const ActionTitle = styled.div`
@@ -28,6 +29,8 @@ const ButtonGroup = styled.div`
   display: flex;
   gap: 10px;
   margin-bottom: 10px;
+  width: 100%;
+  justify-content: center;
 `;
 
 const ActionButton = styled.button`
@@ -54,6 +57,7 @@ const ActionButton = styled.button`
   color: white;
   border: none;
   outline: none;
+  min-width: 80px; /* 确保按钮有最小宽度 */
   
   &:hover {
     filter: brightness(1.1);
@@ -141,8 +145,14 @@ const PredefinedBetButton = styled.button`
 `;
 
 const ActionControls = ({ gameState, currentPlayer }) => {
-  const [betAmount, setBetAmount] = useState(gameState.minBet);
+  const [betAmount, setBetAmount] = useState(gameState?.minBet || 10);
   const [showBetControls, setShowBetControls] = useState(false);
+  
+  // 确保gameState和currentPlayer存在
+  if (!gameState || !currentPlayer) {
+    console.warn('ActionControls: gameState or currentPlayer is undefined');
+    return null;
+  }
   
   // 计算可用的操作
   const canCheck = gameState.currentBet <= (currentPlayer?.currentBet || 0);
@@ -153,6 +163,7 @@ const ActionControls = ({ gameState, currentPlayer }) => {
   
   // 处理操作按钮点击
   const handleAction = (action, amount = 0) => {
+    console.log(`执行动作: ${action}, 金额: ${amount}`);
     sendAction(action, amount);
   };
   

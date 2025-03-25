@@ -1,0 +1,17 @@
+{
+  "name": "multiplayer-poker-game",
+  "version": "0.1.0",
+  "description": "多人局域网德州扑克游戏",
+  "scripts": {
+    "install-all": "npm install && cd client && npm install && cd ../server && npm install",
+    "start-client": "cd client && npm start",
+    "start-server": "cd server && npm run dev",
+    "dev": "concurrently \"npm run start-server\" \"npm run start-client\"",
+    "build": "cd client && npm run build"
+  },
+  "author": "evanbian",
+  "license": "MIT",
+  "devDependencies": {
+    "concurrently": "^8.2.0"
+  }
+}

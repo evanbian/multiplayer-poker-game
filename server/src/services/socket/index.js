@@ -1,4 +1,4 @@
-// socket/index.js 完整版
+// server/src/services/socket/index.js
 const { v4: uuidv4 } = require('uuid');
 const logger = require('../../utils/logger');
 const roomService = require('../room');
@@ -73,9 +73,6 @@ const initSocketServer = (socketIo) => {
 };
 
 // 处理断开连接
-// server/src/services/socket/index.js - 修复handleDisconnect函数
-
-// 修复的handleDisconnect函数部分
 const handleDisconnect = (socket) => {
   const userData = connectedUsers.get(socket.id);
   if (!userData) return;
@@ -87,9 +84,6 @@ const handleDisconnect = (socket) => {
     try {
       // 先检查房间是否仍然存在
       if (roomService.roomExists(userData.roomId)) {
-        // 获取房间信息
-        const roomInfo = roomService.getRoomInfo(userData.roomId);
-        
         // 用户离开房间
         roomService.leaveRoom(userData.id, userData.roomId);
         socket.leave(userData.roomId);
@@ -104,6 +98,9 @@ const handleDisconnect = (socket) => {
             players: roomService.getPlayersInRoom(userData.roomId)
           });
         }
+        
+        // 更新房间列表
+        io.emit('room_list', { rooms: roomService.getPublicRooms() });
       } else {
         logger.info(`Room ${userData.roomId} no longer exists when user ${userData.id} disconnected`);
       }
@@ -115,6 +112,7 @@ const handleDisconnect = (socket) => {
   // 移除用户记录
   connectedUsers.delete(socket.id);
 };
+
 // 处理创建房间
 const handleCreateRoom = (socket, data) => {
   try {
@@ -122,6 +120,14 @@ const handleCreateRoom = (socket, data) => {
     if (!userData) return;
     
     const { roomName, playerName, maxPlayers, minBet } = data;
+    
+    // 验证必要的数据
+    if (!roomName || !playerName) {
+      return socket.emit('error', { 
+        code: 'INVALID_DATA', 
+        message: '房间名和玩家名是必须的' 
+      });
+    }
     
     // 创建新房间
     const roomId = roomService.createRoom({
@@ -143,7 +149,8 @@ const handleCreateRoom = (socket, data) => {
     // 发送房间信息
     socket.emit('room_joined', {
       room: roomService.getRoomInfo(roomId),
-      players: roomService.getPlayersInRoom(roomId)
+      players: roomService.getPlayersInRoom(roomId),
+      seats: roomService.getSeats(roomId)
     });
     
     // 更新房间列表
@@ -160,18 +167,45 @@ const handleCreateRoom = (socket, data) => {
 const handleJoinRoom = (socket, data) => {
   try {
     const userData = connectedUsers.get(socket.id);
-    if (!userData) return;
+    if (!userData) {
+      logger.error('User data not found for socket:', socket.id);
+      return socket.emit('error', { 
+        code: 'USER_NOT_FOUND',
+        message: '用户数据不存在，请刷新页面重试'
+      });
+    }
     
     const { roomId, playerName } = data;
     
+    // 验证必要的数据
+    if (!roomId || !playerName) {
+      return socket.emit('error', { 
+        code: 'INVALID_DATA', 
+        message: '房间ID和玩家名是必须的' 
+      });
+    }
+    
     // 检查房间是否存在
     if (!roomService.roomExists(roomId)) {
-      return socket.emit('error', { code: 'ROOM_NOT_FOUND', message: 'Room not found' });
+      logger.error(`Room not found: ${roomId}`);
+      return socket.emit('error', { 
+        code: 'ROOM_NOT_FOUND', 
+        message: '房间不存在或已关闭' 
+      });
     }
     
     // 检查房间是否已满
     if (roomService.isRoomFull(roomId)) {
-      return socket.emit('error', { code: 'ROOM_FULL', message: 'Room is full' });
+      logger.error(`Room is full: ${roomId}`);
+      return socket.emit('error', { 
+        code: 'ROOM_FULL', 
+        message: '房间已满' 
+      });
+    }
+    
+    // 如果用户已经在其他房间，先离开
+    if (userData.roomId && userData.roomId !== roomId) {
+      handleLeaveRoom(socket);
     }
     
     // 更新用户数据
@@ -186,7 +220,8 @@ const handleJoinRoom = (socket, data) => {
     // 发送房间信息给新加入的玩家
     socket.emit('room_joined', {
       room: roomService.getRoomInfo(roomId),
-      players: roomService.getPlayersInRoom(roomId)
+      players: roomService.getPlayersInRoom(roomId),
+      seats: roomService.getSeats(roomId)
     });
     
     // 通知房间其他玩家
@@ -196,7 +231,8 @@ const handleJoinRoom = (socket, data) => {
     
     socket.to(roomId).emit('room_update', {
       room: roomService.getRoomInfo(roomId),
-      players: roomService.getPlayersInRoom(roomId)
+      players: roomService.getPlayersInRoom(roomId),
+      seats: roomService.getSeats(roomId)
     });
     
     // 更新房间列表
@@ -217,6 +253,16 @@ const handleLeaveRoom = (socket) => {
     
     const roomId = userData.roomId;
     
+    // 检查房间是否存在
+    if (!roomService.roomExists(roomId)) {
+      logger.info(`Room ${roomId} no longer exists when user ${userData.id} tried to leave`);
+      // 仍然更新用户数据
+      userData.roomId = null;
+      connectedUsers.set(socket.id, userData);
+      socket.leave(roomId);
+      return;
+    }
+    
     // 从房间移除用户
     roomService.leaveRoom(userData.id, roomId);
     socket.leave(roomId);
@@ -229,7 +275,8 @@ const handleLeaveRoom = (socket) => {
     socket.to(roomId).emit('player_left', { playerId: userData.id });
     socket.to(roomId).emit('room_update', {
       room: roomService.getRoomInfo(roomId),
-      players: roomService.getPlayersInRoom(roomId)
+      players: roomService.getPlayersInRoom(roomId),
+      seats: roomService.getSeats(roomId)
     });
     
     // 更新房间列表
@@ -246,14 +293,22 @@ const handleLeaveRoom = (socket) => {
 const handleSitDown = (socket, data) => {
   try {
     const userData = connectedUsers.get(socket.id);
-    if (!userData || !userData.roomId) return;
+    if (!userData || !userData.roomId) {
+      return socket.emit('error', { 
+        code: 'NOT_IN_ROOM', 
+        message: '您不在房间中，无法入座' 
+      });
+    }
     
     const { seatPosition } = data;
     const roomId = userData.roomId;
     
     // 检查座位是否可用
     if (!roomService.isSeatAvailable(roomId, seatPosition)) {
-      return socket.emit('error', { code: 'SEAT_OCCUPIED', message: 'Seat is already occupied' });
+      return socket.emit('error', { 
+        code: 'SEAT_OCCUPIED', 
+        message: '座位已被占用' 
+      });
     }
     
     // 玩家入座
@@ -279,7 +334,12 @@ const handleSitDown = (socket, data) => {
 const handleStandUp = (socket) => {
   try {
     const userData = connectedUsers.get(socket.id);
-    if (!userData || !userData.roomId) return;
+    if (!userData || !userData.roomId) {
+      return socket.emit('error', { 
+        code: 'NOT_IN_ROOM', 
+        message: '您不在房间中，无法起立' 
+      });
+    }
     
     const roomId = userData.roomId;
     
@@ -306,7 +366,12 @@ const handleStandUp = (socket) => {
 const handlePlayerReady = (socket, data) => {
   try {
     const userData = connectedUsers.get(socket.id);
-    if (!userData || !userData.roomId) return;
+    if (!userData || !userData.roomId) {
+      return socket.emit('error', { 
+        code: 'NOT_IN_ROOM', 
+        message: '您不在房间中，无法准备' 
+      });
+    }
     
     const { ready } = data;
     const roomId = userData.roomId;
@@ -335,18 +400,29 @@ const handlePlayerReady = (socket, data) => {
 const handlePlayerAction = (socket, data) => {
   try {
     const userData = connectedUsers.get(socket.id);
-    if (!userData || !userData.roomId) return;
+    if (!userData || !userData.roomId) {
+      return socket.emit('error', { 
+        code: 'NOT_IN_ROOM', 
+        message: '您不在房间中，无法执行动作' 
+      });
+    }
     
     const roomId = userData.roomId;
     
     // 确保游戏正在进行
     if (!gameService.isGameInProgress(roomId)) {
-      return socket.emit('error', { code: 'GAME_NOT_IN_PROGRESS', message: 'Game is not in progress' });
+      return socket.emit('error', { 
+        code: 'GAME_NOT_IN_PROGRESS', 
+        message: '游戏未开始，无法执行动作' 
+      });
     }
     
     // 确保是玩家的回合
     if (!gameService.isPlayerTurn(userData.id, roomId)) {
-      return socket.emit('error', { code: 'NOT_YOUR_TURN', message: 'Not your turn' });
+      return socket.emit('error', { 
+        code: 'NOT_YOUR_TURN', 
+        message: '不是您的回合，无法执行动作' 
+      });
     }
     
     // 处理玩家动作
@@ -401,9 +477,23 @@ const handlePlayerAction = (socket, data) => {
 const handleChatMessage = (socket, data) => {
   try {
     const userData = connectedUsers.get(socket.id);
-    if (!userData || !userData.roomId) return;
+    if (!userData || !userData.roomId) {
+      return socket.emit('error', { 
+        code: 'NOT_IN_ROOM', 
+        message: '您不在房间中，无法发送消息' 
+      });
+    }
     
     const { message } = data;
+    
+    // 验证消息内容
+    if (!message || typeof message !== 'string' || message.trim() === '') {
+      return socket.emit('error', { 
+        code: 'INVALID_MESSAGE', 
+        message: '消息内容不能为空' 
+      });
+    }
+    
     const roomId = userData.roomId;
     
     // 向房间内所有玩家广播消息
@@ -417,6 +507,7 @@ const handleChatMessage = (socket, data) => {
     logger.info(`Chat message from ${userData.id} in room ${roomId}`);
   } catch (error) {
     logger.error('Error sending chat message:', error);
+    socket.emit('error', { code: 'CHAT_FAILED', message: error.message });
   }
 };
 
@@ -447,14 +538,20 @@ const handleRoundEnd = (roomId) => {
     
     // 通知当前回合玩家
     const currentPlayer = gameService.getCurrentTurnPlayer(roomId);
-    io.to(roomId).emit('turn_changed', {
-      playerId: currentPlayer,
-      timeLeft: 30 // 30秒决策时间
-    });
+    if (currentPlayer) {
+      io.to(roomId).emit('turn_changed', {
+        playerId: currentPlayer,
+        timeLeft: 30 // 30秒决策时间
+      });
+    }
     
     logger.info(`Round ${nextRound.round} started in room ${roomId}`);
   } catch (error) {
     logger.error('Error handling round end:', error);
+    io.to(roomId).emit('error', { 
+      code: 'ROUND_END_ERROR', 
+      message: '回合结束处理出错' 
+    });
   }
 };
 
@@ -484,6 +581,10 @@ const handleGameEnd = (roomId, winners) => {
     logger.info(`Game ended in room ${roomId}`);
   } catch (error) {
     logger.error('Error handling game end:', error);
+    io.to(roomId).emit('error', { 
+      code: 'GAME_END_ERROR', 
+      message: '游戏结束处理出错' 
+    });
   }
 };
 
@@ -522,10 +623,12 @@ const startGame = (roomId) => {
     
     // 通知当前回合玩家
     const currentPlayer = gameService.getCurrentTurnPlayer(roomId);
-    io.to(roomId).emit('turn_changed', {
-      playerId: currentPlayer,
-      timeLeft: 30 // 30秒决策时间
-    });
+    if (currentPlayer) {
+      io.to(roomId).emit('turn_changed', {
+        playerId: currentPlayer,
+        timeLeft: 30 // 30秒决策时间
+      });
+    }
     
     logger.info(`Game started in room ${roomId}`);
   } catch (error) {
