@@ -1,4 +1,4 @@
-// Socket.IO服务初始化
+// socket/index.js 完整版
 const { v4: uuidv4 } = require('uuid');
 const logger = require('../../utils/logger');
 const roomService = require('../room');
@@ -6,9 +6,12 @@ const gameService = require('../game');
 
 // 连接用户映射
 const connectedUsers = new Map();
+let io; // 保存io实例
 
 // 初始化Socket.IO服务器
-const initSocketServer = (io) => {
+const initSocketServer = (socketIo) => {
+  io = socketIo; // 保存引用
+  
   io.on('connection', (socket) => {
     logger.info(`New connection: ${socket.id}`);
     
@@ -478,10 +481,6 @@ const getSocketByPlayerId = (playerId) => {
   return null;
 };
 
-module.exports = {
-  initSocketServer
-};
-
 // 开始游戏
 const startGame = (roomId) => {
   try {
@@ -513,4 +512,15 @@ const startGame = (roomId) => {
     });
     
     logger.info(`Game started in room ${roomId}`);
+  } catch (error) {
+    logger.error(`Error starting game in room ${roomId}:`, error);
+    io.to(roomId).emit('error', {
+      code: 'GAME_START_FAILED',
+      message: '游戏启动失败，请重试'
+    });
   }
+};
+
+module.exports = {
+  initSocketServer
+};

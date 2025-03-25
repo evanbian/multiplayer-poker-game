@@ -256,6 +256,31 @@ const handlePlayerAction = (playerId, roomId, actionData) => {
   return result;
 };
 
+// 处理弃牌
+const handleFold = (playerId, roomId, gameState) => {
+  // 更新玩家状态
+  roomService.updatePlayer(playerId, roomId, {
+    isFolded: true,
+    isActive: false
+  });
+  
+  // 从活跃玩家列表中移除
+  const playerIndex = gameState.activePlayers.indexOf(playerId);
+  if (playerIndex !== -1) {
+    gameState.activePlayers.splice(playerIndex, 1);
+  }
+  
+  logger.info(`Player ${playerId} folded in room ${roomId}`);
+  
+  // 检查是否只剩一名活跃玩家
+  if (gameState.activePlayers.length === 1) {
+    // 直接结束游戏
+    handleLastPlayerStanding(roomId, gameState);
+  }
+  
+  return false; // 底池未更新
+};
+
 // 处理过牌
 const handleCheck = (playerId, roomId, gameState) => {
   // 确保当前回合允许过牌
@@ -501,7 +526,7 @@ const moveToNextRound = (roomId) => {
   const gameState = gameStates.get(roomId);
   
   // 重置当前回合状态
-  resetRoundState(gameState);
+  resetRoundState(roomId, gameState);
   
   let result = {
     round: gameState.round,
@@ -564,7 +589,7 @@ const moveToNextRound = (roomId) => {
 };
 
 // 重置回合状态
-const resetRoundState = (gameState) => {
+const resetRoundState = (roomId, gameState) => {
   // 清空已行动玩家列表
   gameState.actedPlayers = new Set();
   
@@ -573,7 +598,6 @@ const resetRoundState = (gameState) => {
   
   // 重置玩家的当前下注
   gameState.activePlayers.forEach(playerId => {
-    const player = roomService.getPlayer(playerId, roomId);
     roomService.updatePlayer(playerId, roomId, {
       currentBet: 0
     });
@@ -667,7 +691,6 @@ const determineWinners = (playerHands, pot) => {
 // 查找下一个玩家位置
 const findNextPlayerPosition = (roomId, currentPosition) => {
   const room = roomService.getRoom(roomId);
-  const seatedPlayers = roomService.getSeatedPlayers(roomId);
   
   // 遍历座位，查找下一个有玩家的位置
   for (let i = 1; i <= room.seats.length; i++) {
@@ -770,6 +793,8 @@ const isGameInProgress = (roomId) => {
 };
 
 // 检查是否是玩家的回合
+// 接续前一部分
+// 检查是否是玩家的回合
 const isPlayerTurn = (playerId, roomId) => {
   // 检查游戏是否存在
   if (!gameStates.has(roomId)) {
@@ -863,6 +888,7 @@ const resetGame = (roomId) => {
   logger.info(`Game reset in room ${roomId}`);
 };
 
+// 导出模块中的函数
 module.exports = {
   initGame,
   handlePlayerAction,
@@ -876,47 +902,3 @@ module.exports = {
   getPlayerCards: roomService.getPlayerCards,
   resetGame
 };
-  
-  // 将玩家添加到已行动列表
-  gameState.actedPlayers.add(playerId);
-  
-  // 检查回合是否结束
-  result.roundEnded = checkRoundEnd(roomId, gameState);
-  if (!result.roundEnded) {
-    // 设置下一个玩家
-    const nextPosition = findNextActivePosition(roomId, gameState.currentTurn);
-    gameState.currentTurn = nextPosition;
-    result.nextPlayer = getPlayerByPosition(roomId, nextPosition).id;
-  }
-  
-  // 保存游戏状态
-  gameStates.set(roomId, gameState);
-  
-  // 更新房间游戏状态
-  roomService.setGameState(roomId, gameState);
-  
-  logger.info(`Player ${playerId} action ${action} processed in room ${roomId}`);
-  
-  return result;
-};
-
-// 处理弃牌
-const handleFold = (playerId, roomId, gameState) => {
-  // 更新玩家状态
-  roomService.updatePlayer(playerId, roomId, {
-    isFolded: true,
-    isActive: false
-  });
-  
-  // 从活跃玩家列表中移除
-  const playerIndex = gameState.activePlayers.indexOf(playerId);
-  if (playerIndex !== -1) {
-    gameState.activePlayers.splice(playerIndex, 1);
-  }
-  
-  logger.info(`Player ${playerId} folded in room ${roomId}`);
-  
-  // 检查是否只剩一名活跃玩家
-  if (gameState.activePlayers.length === 1) {
-    // 直接结束游戏
-    handleLastPlayerStanding(roomId, gameState);
