@@ -39,6 +39,11 @@ export const gameSlice = createSlice({
     },
     updateGameState: (state, action) => {
       state.gameState = action.payload;
+      
+      // 如果游戏状态变为waiting，清空获胜者列表
+      if (action.payload.status === 'waiting') {
+        state.winners = [];
+      }
     },
     updatePlayerCards: (state, action) => {
       state.playerCards = action.payload;
@@ -67,7 +72,13 @@ export const gameSlice = createSlice({
       state.currentTurnData = null;
     },
     roundEnded: (state, action) => {
-      state.winners = action.payload.winners;
+      // 设置获胜者信息
+      state.winners = action.payload.winners || [];
+      
+      // 清空底池
+      if (action.payload.pot !== undefined) {
+        state.gameState.pot = 0;
+      }
     },
     playerJoined: (state, action) => {
       const existingIndex = state.players.findIndex(p => p.id === action.payload.id);
@@ -93,6 +104,12 @@ export const gameSlice = createSlice({
         players: state.players,
         seats: state.seats
       };
+    },
+    setWinners: (state, action) => {
+      state.winners = action.payload;
+    },
+    clearWinners: (state) => {
+      state.winners = [];
     }
   }
 });
@@ -113,7 +130,9 @@ export const {
   playerJoined,
   playerLeft,
   updatePlayer,
-  resetGame
+  resetGame,
+  setWinners,
+  clearWinners
 } = gameSlice.actions;
 
 export default gameSlice.reducer;

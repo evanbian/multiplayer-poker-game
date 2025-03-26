@@ -6,6 +6,7 @@ import styled from 'styled-components';
 import GameTable from '../components/game/GameTable';
 import ChatBox from '../components/game/ChatBox';
 import GameInfo from '../components/game/GameInfo';
+import Showdown from '../components/game/Showdown';
 import { leaveRoom, toggleReady } from '../services/socket/socketService';
 import { setNotification } from '../store/slices/uiSlice';
 
@@ -95,6 +96,7 @@ const MainArea = styled.div`
   overflow-y: auto;
   display: flex;
   flex-direction: column;
+  position: relative;
 `;
 
 const Sidebar = styled.div`
@@ -114,8 +116,10 @@ const Game = () => {
     return state.game.players.find(player => player.id === playerId);
   });
   const gameState = useSelector((state) => state.game.gameState);
+  const winners = useSelector((state) => state.game.winners);
   
   const [showGameInfo, setShowGameInfo] = useState(true);
+  const [showShowdown, setShowShowdown] = useState(false);
   
   // 如果没有房间信息，重定向到大厅页面
   useEffect(() => {
@@ -123,6 +127,13 @@ const Game = () => {
       navigate('/');
     }
   }, [roomInfo, navigate]);
+  
+  // 监听游戏结束，显示比牌结果
+  useEffect(() => {
+    if (gameState.status === 'finished' && winners && winners.length > 0) {
+      setShowShowdown(true);
+    }
+  }, [gameState.status, winners]);
   
   // 处理准备/取消准备
   const handleReadyToggle = () => {
@@ -140,6 +151,19 @@ const Game = () => {
   const handleLeaveRoom = () => {
     leaveRoom();
     navigate('/');
+  };
+  
+  // 处理下一局游戏
+  const handleNextRound = () => {
+    setShowShowdown(false);
+    // 如果玩家已入座但未准备，自动准备
+    if (currentPlayer && currentPlayer.seatPosition !== -1 && !currentPlayer.isReady) {
+      toggleReady(true);
+      dispatch(setNotification({
+        message: '已自动准备开始下一局',
+        type: 'info'
+      }));
+    }
   };
   
   // 切换游戏信息/聊天
@@ -187,6 +211,14 @@ const Game = () => {
       <Content>
         <MainArea>
           <GameTable />
+          
+          {/* 摊牌组件 */}
+          {showShowdown && (
+            <Showdown 
+              winners={winners} 
+              onNextRound={handleNextRound} 
+            />
+          )}
         </MainArea>
         
         <Sidebar>

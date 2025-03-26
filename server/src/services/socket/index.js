@@ -556,6 +556,7 @@ const handleRoundEnd = (roomId) => {
 };
 
 // 处理游戏结束
+  // 处理游戏结束
 const handleGameEnd = (roomId, winners) => {
   try {
     // 通知所有玩家游戏结果
@@ -564,21 +565,40 @@ const handleGameEnd = (roomId, winners) => {
       pot: gameService.getPot(roomId)
     });
     
-    // 重置游戏状态
-    gameService.resetGame(roomId);
-    
-    // 更新玩家信息
-    const players = roomService.getPlayersInRoom(roomId);
-    players.forEach(player => {
-      io.to(roomId).emit('player_update', {
-        player: roomService.getPlayer(player.id, roomId)
+    // 添加延迟，给玩家足够时间查看结果
+    setTimeout(() => {
+      // 重置游戏状态
+      gameService.resetGame(roomId);
+      
+      // 更新玩家信息
+      const players = roomService.getPlayersInRoom(roomId);
+      players.forEach(player => {
+        io.to(roomId).emit('player_update', {
+          player: roomService.getPlayer(player.id, roomId)
+        });
       });
-    });
-    
-    // 通知游戏结束
-    io.to(roomId).emit('game_ended');
-    
-    logger.info(`Game ended in room ${roomId}`);
+      
+      // 通知游戏结束
+      io.to(roomId).emit('game_ended');
+      
+      // 发送更新的游戏状态
+      io.to(roomId).emit('game_state', {
+        state: gameService.getGameState(roomId) || {
+          status: 'waiting',
+          communityCards: [],
+          pot: 0,
+          currentBet: 0,
+          minBet: roomService.getRoom(roomId).minBet,
+          dealerPosition: -1,
+          smallBlindPosition: -1,
+          bigBlindPosition: -1,
+          currentTurn: null,
+          round: ''
+        }
+      });
+      
+      logger.info(`Game ended in room ${roomId}`);
+    }, 5000); // 5秒后重置游戏
   } catch (error) {
     logger.error('Error handling game end:', error);
     io.to(roomId).emit('error', { 
@@ -587,7 +607,6 @@ const handleGameEnd = (roomId, winners) => {
     });
   }
 };
-
 // 根据玩家ID获取Socket
 const getSocketByPlayerId = (playerId) => {
   for (const [socketId, userData] of connectedUsers.entries()) {
