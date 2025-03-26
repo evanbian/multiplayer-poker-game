@@ -9,6 +9,8 @@ import GameInfo from '../components/game/GameInfo';
 import Showdown from '../components/game/Showdown';
 import { leaveRoom, toggleReady } from '../services/socket/socketService';
 import { setNotification } from '../store/slices/uiSlice';
+import { setActiveModal } from '../store/slices/uiSlice';
+import ActionLog from '../components/game/ActionLog';
 
 const GameContainer = styled.div`
   display: flex;
@@ -106,6 +108,17 @@ const Sidebar = styled.div`
   flex-direction: column;
 `;
 
+const PlayerNameButton = styled.span`
+  cursor: pointer;
+  margin-left: 5px;
+  font-size: 12px;
+  color: #3498db;
+  
+  &:hover {
+    text-decoration: underline;
+  }
+`;
+
 const Game = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
@@ -117,7 +130,8 @@ const Game = () => {
   });
   const gameState = useSelector((state) => state.game.gameState);
   const winners = useSelector((state) => state.game.winners);
-  
+  const playerName = useSelector((state) => state.auth.playerName); // 获取玩家昵称
+
   const [showGameInfo, setShowGameInfo] = useState(true);
   const [showShowdown, setShowShowdown] = useState(false);
   
@@ -165,7 +179,11 @@ const Game = () => {
       }));
     }
   };
-  
+   // 添加处理修改昵称的函数
+  const handleEditNickname = () => {
+    dispatch(setActiveModal({ modalType: 'editNickname' }));
+  };
+ 
   // 切换游戏信息/聊天
   const toggleSidebar = () => {
     setShowGameInfo(!showGameInfo);
@@ -180,7 +198,6 @@ const Game = () => {
   if (!roomInfo || !currentPlayer) {
     return <div>加载中...</div>;
   }
-
   return (
     <GameContainer>
       <Header>
@@ -188,6 +205,11 @@ const Game = () => {
           <RoomName>{roomInfo.name}</RoomName>
           <RoomDetails>
             最小下注: {roomInfo.minBet} | 玩家: {roomInfo.playerCount}/{roomInfo.maxPlayers}
+            {/* 添加玩家名称和修改按钮 */}
+            | 您: {playerName} 
+            <PlayerNameButton onClick={handleEditNickname}>
+              修改
+            </PlayerNameButton>
           </RoomDetails>
         </RoomInfo>
         
@@ -211,7 +233,10 @@ const Game = () => {
       <Content>
         <MainArea>
           <GameTable />
-          
+
+          {/* 添加动作日志组件 */}
+          <ActionLog />
+
           {/* 摊牌组件 */}
           {showShowdown && (
             <Showdown 

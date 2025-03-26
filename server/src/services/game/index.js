@@ -666,28 +666,45 @@ const handleShowdown = (roomId, gameState) => {
 };
 
 // 确定获胜者并分配底池
+  // 在 server/src/services/game/index.js 中找到 determineWinners 函数并修改为:
+
+// 确定获胜者并分配底池
 const determineWinners = (playerHands, pot) => {
   // 使用pokersolver库判断获胜手牌
-  const winningHands = Hand.winners(playerHands.map(p => p.hand));
+  const winners = Hand.winners(playerHands.map(p => p.hand));
   
-  // 找出获胜玩家
-  const winners = playerHands.filter(p => 
-    winningHands.some(h => h.cardPool.toString() === p.hand.cardPool.toString())
+  // 获取所有获胜玩家的信息
+  const winningPlayers = playerHands.filter(player => 
+    winners.some(winner => 
+      winner.cardPool.toString() === player.hand.cardPool.toString()
+    )
   );
   
+  // 调试信息
+  logger.info('Winning players found: ' + winningPlayers.length);
+  
+  // 记录所有玩家手牌信息，便于调试
+  playerHands.forEach(player => {
+    logger.info(`Player ${player.playerId}: Hand: ${player.hand.name}, Cards: ${player.hand.cardPool}`);
+  });
+  
+  // 记录获胜玩家信息，便于调试
+  winningPlayers.forEach(player => {
+    logger.info(`Winner ${player.playerId}: ${player.hand.name}, Cards: ${player.hand.cardPool}`);
+  });
+  
   // 平均分配底池
-  const winAmount = Math.floor(pot / winners.length);
-  const remainder = pot % winners.length;
+  const winAmount = Math.floor(pot / winningPlayers.length);
+  const remainder = pot % winningPlayers.length;
   
   // 创建获胜者列表
-  return winners.map((winner, index) => ({
+  return winningPlayers.map((winner, index) => ({
     playerId: winner.playerId,
     handType: winner.hand.name,
     hand: winner.holeCards,
     winAmount: winAmount + (index < remainder ? 1 : 0) // 处理无法平均分配的筹码
   }));
 };
-
 // 查找下一个玩家位置
 const findNextPlayerPosition = (roomId, currentPosition) => {
   const room = roomService.getRoom(roomId);

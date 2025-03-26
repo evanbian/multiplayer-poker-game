@@ -69,6 +69,10 @@ const initSocketServer = (socketIo) => {
     socket.on('send_message', (data) => {
       handleChatMessage(socket, data);
     });
+    // 更新昵称
+    socket.on('update_nickname', (data) => {
+      handleUpdateNickname(socket, data);
+});
   });
 };
 
@@ -605,6 +609,56 @@ const handleGameEnd = (roomId, winners) => {
       code: 'GAME_END_ERROR', 
       message: '游戏结束处理出错' 
     });
+  }
+};
+// 处理昵称更新
+const handleUpdateNickname = (socket, data) => {
+  try {
+    const userData = connectedUsers.get(socket.id);
+    if (!userData) return;
+    
+    const { name } = data;
+    
+    // 验证必要的数据
+    if (!name) {
+      return socket.emit('error', { 
+        code: 'INVALID_DATA', 
+        message: '昵称不能为空' 
+      });
+    }
+// 更新用户数据
+    userData.name = name;
+    connectedUsers.set(socket.id, userData);
+    
+    // 如果用户在房间中，更新玩家信息
+    if (userData.roomId) {
+      // 更新玩家名称
+      try {
+        const player = roomService.getPlayer(userData.id, userData.roomId);
+        roomService.updatePlayer(userData.id, userData.roomId, {
+          name: name
+        });
+        
+        // 通知房间所有玩家
+        io.to(userData.roomId).emit('player_update', {
+          player: roomService.getPlayer(userData.id, userData.roomId)
+        });
+        
+        logger.info(`Player ${userData.id} updated nickname to ${name} in room ${userData.roomId}`);
+      } catch (error) {
+        logger.error(`Error updating player nickname: ${error.message}`);
+      }
+    }
+    
+    // 发送成功通知
+    socket.emit('notification', {
+      type: 'success',
+      message: '昵称更新成功'
+    });
+    
+  } catch (error) {
+    logger.error('Error updating nickname:', error);
+    socket.emit('error', { code: 'UPDATE_NICKNAME_FAILED', message: error.message });
   }
 };
 // 根据玩家ID获取Socket

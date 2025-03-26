@@ -3,6 +3,22 @@ import React from 'react';
 import styled from 'styled-components';
 import Card from './Card';
 import { useSelector } from 'react-redux';
+import { useSpring, animated } from 'react-spring';
+
+const ActionBubble = styled(animated.div)`
+  position: absolute;
+  top: -40px;
+  left: 50%;
+  transform: translateX(-50%);
+  background-color: rgba(0, 0, 0, 0.7);
+  color: white;
+  padding: 4px 8px;
+  border-radius: 10px;
+  font-size: 12px;
+  font-weight: bold;
+  white-space: nowrap;
+  z-index: 10;
+`;
 
 const SeatContainer = styled.div`
   position: relative;
@@ -157,11 +173,33 @@ const PlayerSeat = ({
   onSitClick,
   showEmpty,
   playerCards,
-  currentBet
+  currentBet,
+  lastAction
 }) => {
   const currentPlayerId = useSelector(state => state.auth.playerId);
   const isCurrentPlayerSeat = player && player.id === currentPlayerId;
-  
+  // 添加动作动画
+  const actionAnimation = useSpring({
+    from: { opacity: 0, transform: 'translate(-50%, 10px)' },
+    to: { opacity: lastAction ? 1 : 0, transform: 'translate(-50%, 0px)' },
+    config: { duration: 300 },
+    reset: true
+  });
+  // 获取玩家动作显示文本
+  const getActionText = () => {
+    if (!lastAction) return '';
+    
+    switch (lastAction.type) {
+      case 'fold': return '弃牌';
+      case 'check': return '过牌';
+      case 'call': return `跟注 ${lastAction.amount}`;
+      case 'bet': return `下注 ${lastAction.amount}`;
+      case 'raise': return `加注至 ${lastAction.amount}`;
+      case 'all-in': return `全押 ${lastAction.amount}`;
+      default: return '';
+    }
+  };
+
   // 获取玩家状态显示信息
   const getPlayerStatus = () => {
     if (!player) return { text: '', color: '' };
@@ -234,6 +272,12 @@ const PlayerSeat = ({
               {player.currentBet}
               {player.currentBet === currentBet && '✓'}
             </BetContainer>
+          )}
+           {/* 添加动作显示 */}
+          {lastAction && (
+            <ActionBubble style={actionAnimation}>
+              {getActionText()}
+            </ActionBubble>
           )}
         </>
       ) : (

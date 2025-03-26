@@ -78,6 +78,8 @@ const CardCenter = styled.div`
   font-size: ${({ small }) => (small ? '16px' : '32px')};
 `;
 
+// 修改 client/src/components/game/Card.js 文件中的 Card 组件:
+
 const Card = ({ card, small = false }) => {
   // 如果卡牌不存在或者被隐藏，显示卡背
   if (!card || card.hidden) {
@@ -100,7 +102,10 @@ const Card = ({ card, small = false }) => {
   
   // 处理特殊牌值显示
   let displayRank = card.rank;
-  if (card.rank === 'A') displayRank = 'A';
+  
+  // 确保正确显示10和字母牌
+  if (card.rank === '10') displayRank = '10';
+  else if (card.rank === 'A') displayRank = 'A';
   else if (card.rank === 'K') displayRank = 'K';
   else if (card.rank === 'Q') displayRank = 'Q';
   else if (card.rank === 'J') displayRank = 'J';
@@ -123,5 +128,4 @@ const Card = ({ card, small = false }) => {
     </CardContainer>
   );
 };
-
 export default Card;

@@ -13,7 +13,8 @@ import {
   playerActionDone,
   gameStarted,
   gameEnded,
-  roundEnded
+  roundEnded,
+  setWinners  // 添加这一行导入setWinners动作创建器
 } from '../../store/slices/gameSlice';
 import { addMessage } from '../../store/slices/chatSlice';
 import { setError, setNotification } from '../../store/slices/uiSlice';
@@ -123,14 +124,24 @@ const setupSocketListeners = () => {
     store.dispatch(updatePlayerCards(data.cards));
   });
 
-  // 发放公共牌
+  //发放公共牌
   socket.on('deal_community_cards', (data) => {
-    store.dispatch(updateCommunityCards(data.cards));
-    store.dispatch(setNotification({
-      message: `${getRoundName(data.round)}`,
-      type: 'info'
-    }));
+  // 记录发牌动作到日志
+  store.dispatch({
+    type: 'game/dealCommunityCards',
+    payload: {
+      cards: data.cards,
+      round: data.round
+    }
   });
+  
+  // 更新公共牌
+  store.dispatch(updateCommunityCards(data.cards));
+  store.dispatch(setNotification({
+    message: `${getRoundName(data.round)}`,
+    type: 'info'
+  }));
+});
 
   // 轮到玩家行动
   socket.on('turn_changed', (data) => {
@@ -183,15 +194,20 @@ const setupSocketListeners = () => {
       sidePots: data.sidePots || []
     }));
   });
-
-  // 回合结束
+  // 游戏结束
   socket.on('round_ended', (data) => {
-    store.dispatch(roundEnded(data));
-    store.dispatch(setNotification({
-      message: '回合结束，结算中...',
-      type: 'info'
-    }));
-  });
+  // 记录获胜者
+  if (data.winners && data.winners.length > 0) {
+    store.dispatch(setWinners(data.winners));
+  }
+  
+  // 原有处理逻辑
+  store.dispatch(roundEnded(data));
+  store.dispatch(setNotification({
+    message: '回合结束，结算中...',
+    type: 'info'
+  }));
+});
 
   // 游戏结束
   socket.on('game_ended', () => {
@@ -344,6 +360,16 @@ export const disconnect = () => {
     socket = null;
   }
 };
+export const updateNickname = (newName) => {
+  if (!socket) return false;
+  
+  // 保存玩家名称到本地存储
+  localStorage.setItem('playerName', newName);
+  
+  // 发送更新事件到服务器
+  socket.emit('update_nickname', { name: newName });
+  return true;
+};
 
 export default {
   initSocket,
@@ -355,5 +381,6 @@ export default {
   standUp,
   toggleReady,
   sendChatMessage,
+  updateNickname, // 添加新函数
   disconnect
 };

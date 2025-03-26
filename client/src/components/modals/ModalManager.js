@@ -3,6 +3,7 @@ import React from 'react';
 import { useSelector } from 'react-redux';
 import PlayerNameModal from './PlayerNameModal';
 import CreateRoomModal from './CreateRoomModal';
+import EditNicknameModal from './EditNicknameModal';
 
 const ModalManager = () => {
   const activeModal = useSelector((state) => state.ui.activeModal);
@@ -14,6 +15,8 @@ const ModalManager = () => {
         return <PlayerNameModal />;
       case 'createRoom':
         return <CreateRoomModal />;
+      case 'editNickname':  // 新增的模态框类型
+        return <EditNicknameModal />;
       default:
         return null;
     }

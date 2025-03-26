@@ -5,6 +5,14 @@ import { useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import RoomList from '../components/lobby/RoomList';
 import { initSocket } from '../services/socket/socketService';
+import { useDispatch } from 'react-redux';
+import { setActiveModal } from '../store/slices/uiSlice';
+
+// 添加一个样式组件
+const UserActions = styled.div`
+  display: flex;
+  align-items: center;
+`;
 
 const LobbyContainer = styled.div`
   min-height: 100vh;
@@ -57,8 +65,24 @@ const Content = styled.div`
   overflow: hidden;
 `;
 
+const UserNameButton = styled.button`
+  background: none;
+  border: none;
+  color: #3498db;
+  cursor: pointer;
+  margin-left: 5px;
+  font-size: 12px;
+  opacity: 0.8;
+  
+  &:hover {
+    text-decoration: underline;
+    opacity: 1;
+  }
+`;
+
 const Lobby = () => {
   const navigate = useNavigate();
+  const dispatch = useDispatch(); // 添加 dispatch
   const roomInfo = useSelector((state) => state.game.roomInfo);
   const playerName = useSelector((state) => state.auth.playerName);
   
@@ -80,13 +104,22 @@ const Lobby = () => {
     return playerName.charAt(0).toUpperCase();
   };
 
+   // 添加处理修改昵称的函数
+  const handleEditNickname = () => {
+    dispatch(setActiveModal({ modalType: 'editNickname' }));
+  };
   return (
     <LobbyContainer>
       <Header>
         <Logo>多人德州扑克</Logo>
         <UserInfo>
           <Avatar>{getAvatarText()}</Avatar>
-          <UserName>{playerName || '未登录'}</UserName>
+          <UserActions>
+            <UserName>{playerName || '未登录'}</UserName>
+            <UserNameButton onClick={handleEditNickname}>
+              修改昵称
+            </UserNameButton>
+          </UserActions>
         </UserInfo>
       </Header>
       

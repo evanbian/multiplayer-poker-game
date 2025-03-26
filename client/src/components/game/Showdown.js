@@ -82,6 +82,13 @@ const HandType = styled.div`
   margin-bottom: 10px;
 `;
 
+const HandExplanation = styled.div`
+  font-size: 12px;
+  color: #f1c40f;
+  margin-top: 5px;
+  font-style: italic;
+`;
+
 const CardsContainer = styled.div`
   display: flex;
   gap: 10px;
@@ -160,11 +167,45 @@ const Showdown = ({ winners, onNextRound }) => {
     
     return handTypes[handType] || handType;
   };
+
+  // 解析每种牌型的组成
+  const analyzeHandType = (handType, cards) => {
+    if (!handType || !cards || cards.length === 0) {
+      return '无法分析牌型';
+    }
+
+    switch (handType) {
+      case 'Royal Flush':
+        return '10、J、Q、K、A 五张同花色的连续牌，最高的同花顺';
+      case 'Straight Flush':
+        return '五张同花色的连续牌';
+      case 'Four of a Kind':
+        return '四张相同点数的牌加上一张配牌';
+      case 'Full House':
+        return '三张相同点数的牌加上一对相同点数的牌';
+      case 'Flush':
+        return '五张相同花色的牌';
+      case 'Straight':
+        return '五张连续点数的牌';
+      case 'Three of a Kind':
+        return '三张相同点数的牌加上两张配牌';
+      case 'Two Pair':
+        return '两对不同点数的牌加上一张配牌';
+      case 'One Pair':
+        return '一对相同点数的牌加上三张配牌';
+      case 'High Card':
+        return '五张不成牌型的牌，以最高点数决定大小';
+      case 'Last player standing':
+        return '其他玩家均已弃牌';
+      default:
+        return handType;
+    }
+  };
   
   if (!winners || winners.length === 0) {
     return null;
   }
-  
+
   return (
     <ShowdownContainer>
       <Title>牌局结果</Title>
@@ -186,6 +227,9 @@ const Showdown = ({ winners, onNextRound }) => {
                 
                 <HandType>
                   牌型: {getHandTypeName(winner.handType)}
+                  <HandExplanation>
+                    {analyzeHandType(winner.handType, winner.hand)}
+                  </HandExplanation>
                 </HandType>
                 
                 <CardsContainer>

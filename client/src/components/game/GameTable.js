@@ -96,7 +96,7 @@ const GameTable = () => {
   const currentPlayerId = useSelector((state) => state.auth.playerId);
   const playerCards = useSelector((state) => state.game.playerCards);
   const currentTurnData = useSelector((state) => state.game.currentTurnData);
-  
+  const playerActions = useSelector((state) => state.game.playerActions);  
   const [showEmptySeats, setShowEmptySeats] = useState(false);
   
   // 确定当前玩家是否已入座
@@ -106,8 +106,17 @@ const GameTable = () => {
   
   // 根据座位ID获取对应的玩家
   const getPlayerBySeat = (seatPosition) => {
-    return players.find((player) => player.seatPosition === seatPosition);
-  };
+    const player = players.find((player) => player.seatPosition === seatPosition);
+     // 返回添加了 lastAction 的玩家信息
+  if (player) {
+    return {
+      ...player,
+      lastAction: playerActions[player.id] || null
+    };
+  }
+  
+  return null;
+};
   
   // 处理入座点击
   const handleSitClick = (seatPosition) => {
@@ -150,18 +159,19 @@ const GameTable = () => {
               position={seat.position}
               totalSeats={seats.length}
             >
-              <PlayerSeat
-                seat={seat}
-                player={getPlayerBySeat(seat.position)}
-                isCurrentTurn={currentTurnData && currentTurnData.playerId === (seat.playerId || null)}
-                dealerPosition={gameState.dealerPosition}
-                smallBlindPosition={gameState.smallBlindPosition}
-                bigBlindPosition={gameState.bigBlindPosition}
-                onSitClick={() => handleSitClick(seat.position)}
-                showEmpty={showEmptySeats || seat.isOccupied}
-                playerCards={seat.playerId === currentPlayerId ? playerCards : []}
-                currentBet={gameState.currentBet}
-              />
+            <PlayerSeat
+            seat={seat}
+            player={getPlayerBySeat(seat.position)}
+            isCurrentTurn={currentTurnData && currentTurnData.playerId === (seat.playerId || null)}
+            dealerPosition={gameState.dealerPosition}
+            smallBlindPosition={gameState.smallBlindPosition}
+            bigBlindPosition={gameState.bigBlindPosition}
+            onSitClick={() => handleSitClick(seat.position)}
+            showEmpty={showEmptySeats || seat.isOccupied}
+            playerCards={seat.playerId === currentPlayerId ? playerCards : []}
+            currentBet={gameState.currentBet}
+            lastAction={seat.playerId && playerActions[seat.playerId] ? playerActions[seat.playerId] : null}
+            />
             </SeatPosition>
           ))}
         </SeatsContainer>
